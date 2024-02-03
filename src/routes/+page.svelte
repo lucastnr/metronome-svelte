@@ -39,7 +39,7 @@
 			clearInterval(intervalId)
 			intervalId = null;
 		}
-		else {
+		else if (playing) {
 			// Start the metronome sound if wasn't playing before
 			metronomeSound.play();
 		}
