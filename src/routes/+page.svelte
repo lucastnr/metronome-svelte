@@ -36,10 +36,9 @@
 		if (!browser) return;
 
 		if (intervalId) {
-			clearInterval(intervalId)
+			clearInterval(intervalId);
 			intervalId = null;
-		}
-		else if (playing) {
+		} else if (playing) {
 			// Start the metronome sound if wasn't playing before
 			metronomeSound.play();
 		}
@@ -53,12 +52,12 @@
 	})();
 
 	function increment() {
-		if (!playing) clickSound.play();
+		clickSound.play();
 		metronome++;
 	}
 
 	function decrement() {
-		if (!playing) clickSound.play();
+		clickSound.play();
 		metronome = Math.max(metronome - 1, 0);
 	}
 </script>
@@ -69,11 +68,11 @@
 		<p>{metronome}</p>
 		<ButtonController class="shrink-0" onClick={increment}>+</ButtonController>
 	</div>
-	<ButtonController onClick={() => playing = !playing }>
+	<ButtonController onClick={() => (playing = !playing)}>
 		{#if playing}
-		<Pause />
+			<Pause />
 		{:else}
-		<Play />
+			<Play />
 		{/if}
 	</ButtonController>
 </div>
