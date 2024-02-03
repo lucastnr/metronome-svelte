@@ -30,9 +30,11 @@
 		$page.url.searchParams.set(storageKey, cache);
 		goto($page.url);
 	})();
-	
+
 	let intervalId: null | number = null;
 	$: (async () => {
+		if (!browser) return;
+
 		if (intervalId) {
 			clearInterval(intervalId)
 			intervalId = null;
@@ -49,9 +51,6 @@
 			return;
 		}
 	})();
-	onDestroy(() => {
-		if (intervalId) clearInterval(intervalId);
-	});
 
 	function increment() {
 		if (!playing) clickSound.play();
