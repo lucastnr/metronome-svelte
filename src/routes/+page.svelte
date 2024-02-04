@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { afterUpdate, createEventDispatcher, onDestroy } from 'svelte';
 	import ButtonController from '../components/ButtonController.svelte';
 	import Play from 'svelte-material-icons/Play.svelte';
 	import Pause from 'svelte-material-icons/Pause.svelte';
@@ -10,7 +9,7 @@
 	import metronomeMp3 from '../assets/metronome.mp3';
 	import clickMp3 from '../assets/click.mp3';
 	import { Sound } from 'svelte-sound';
-	import { writable } from 'svelte/store';
+	import { writable, get } from 'svelte/store';
 
 	const metronomeSound = new Sound(metronomeMp3);
 	const clickSound = new Sound(clickMp3, { volume: 0.07 });
@@ -18,77 +17,52 @@
 	const storageKey = 'metronome';
 	const defaultMetronome = 60;
 
-	let metronome = (() => {
+	function sleep(ms: number) {
+		return new Promise((r) => setTimeout(r, ms));
+	}
+
+	function getInitialMetronome() {
 		if (!browser) return defaultMetronome;
 		const cached = $page.url.searchParams.get(storageKey) || '';
-		return isNaN(+cached) ? defaultMetronome : +cached;
-	})();
-	let playing = false;
+		return isNaN(+cached)
+			? defaultMetronome
+			: Math.max(+cached, defaultMetronome);
+	}
+
+	const metronome = writable(getInitialMetronome());
+	const playing = writable(false);
+
+	playing.subscribe(async () => {
+		let metronomeChanged = true;
+		metronome.subscribe(() => metronomeChanged = true);
+
+		while (get(playing)) {
+			if (metronomeChanged) await sleep(800);
+			metronomeChanged = false;
+
+			metronomeSound.play();
+			const interval = 60000 / get(metronome);
+			await sleep(interval);
+		}
+	});
 
 	// Deal with caching the new metronome value
 	$: (() => {
-		if (!browser) return;
+		if (!browser || !$metronome) return;
 
-		const cache = (metronome || defaultMetronome).toString();
+		const cache = $metronome.toString();
 		$page.url.searchParams.set(storageKey, cache);
 		goto($page.url);
 	})();
 
-	let intervalId = writable<null | number>(null);
-	let timeoutId = writable<null | number>(null);
-
-	$: (async () => {
-		let currentInterval: null | number = null;
-		intervalId.update((current) => {
-			currentInterval = current;
-			return current;
-		});
-		let currentTimeout: null | number = null;
-		intervalId.update((current) => {
-			currentTimeout = current;
-			return current;
-		});
-
-		if (!browser) return;
-		if (currentInterval) {
-			clearInterval(currentInterval);
-			intervalId.update(() => {
-				return null;
-			});
-		}
-		if (currentTimeout) {
-			clearTimeout(currentTimeout);
-			timeoutId.update(() => {
-				return null;
-			});
-		}
-
-		if (!playing) return;
-
-		await new Promise((resolve) => {
-			timeoutId.update(() => setTimeout(resolve, 1000));
-		});
-		console.log('tick');
-
-		metronomeSound.play();
-		const interval = 60000 / metronome;
-		intervalId.update(() =>
-			setInterval(async () => {
-				console.log('tick');
-				metronomeSound.play();
-			}, interval)
-		);
-	})();
-
 	function increment() {
 		clickSound.play();
-		metronome++;
+		$metronome++;
 	}
 
 	function decrement() {
 		clickSound.play();
-		metronome = Math.max(metronome - 1, defaultMetronome);
-		metronome = Math.min(metronome, defaultMetronome);
+		$metronome = Math.max($metronome - 1, defaultMetronome);
 	}
 </script>
 
@@ -98,13 +72,13 @@
 		<input
 			class="remove-arrow text-center"
 			type="number"
-			bind:value={metronome}
-			on:click={() => (playing = false)}
+			bind:value={$metronome}
+			on:click={() => ($playing = false)}
 		/>
 		<ButtonController class="shrink-0" onClick={increment}>+</ButtonController>
 	</div>
-	<ButtonController onClick={() => (playing = !playing)}>
-		{#if playing}
+	<ButtonController onClick={() => ($playing = !$playing)}>
+		{#if $playing}
 			<Pause />
 		{:else}
 			<Play />
